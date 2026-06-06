@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "GLCN – Go Live Creator Network"
+version = "1.0.0"
+id = "artifacts/glcn"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25802
+
+[services.development]
+run = "pnpm --filter @workspace/glcn run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/glcn", "run", "build" ]
+publicDir = "artifacts/glcn/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25802"
+BASE_PATH = "/"
