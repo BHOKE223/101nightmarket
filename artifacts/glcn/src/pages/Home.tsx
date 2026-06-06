@@ -71,7 +71,7 @@ export default function Home() {
             <img
               src="/glcn-logo.webp"
               alt="GLCN – Go Live Creator Network"
-              className="w-64 sm:w-80 md:w-96 h-auto drop-shadow-[0_0_40px_rgba(255,80,80,0.4)]"
+              className="w-64 sm:w-80 md:w-96 h-auto drop-shadow-[0_0_40px_rgba(255,80,80,0.4)] [mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black_55%,transparent_100%)]"
               data-testid="img-glcn-logo-hero"
               fetchPriority="high"
             />
