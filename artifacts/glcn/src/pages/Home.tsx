@@ -61,17 +61,28 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 min-h-[90vh] flex flex-col justify-center relative overflow-hidden">
-        <div className="absolute top-1/4 left-0 w-48 h-48 bg-primary/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 right-0 w-48 h-48 bg-secondary/15 rounded-full blur-3xl pointer-events-none" />
+      <section className="pt-28 pb-20 px-4 min-h-[90vh] flex flex-col justify-center relative overflow-hidden">
+        <div className="absolute top-1/4 left-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 right-0 w-64 h-64 bg-secondary/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="container mx-auto max-w-4xl text-center relative z-10 fade-in is-visible">
+          {/* GLCN Logo — main hero focus */}
+          <div className="flex justify-center mb-6">
+            <img
+              src="/glcn-logo.webp"
+              alt="GLCN – Go Live Creator Network"
+              className="w-64 sm:w-80 md:w-96 h-auto drop-shadow-[0_0_40px_rgba(255,80,80,0.4)]"
+              data-testid="img-glcn-logo-hero"
+              fetchPriority="high"
+            />
+          </div>
+
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border border-border text-sm font-medium mb-8">
             <SiTiktok className="w-4 h-4 text-[#ff0050]" />
             <span>Official TikTok Live Agency</span>
           </div>
 
-          <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-6 leading-[1.1]">
+          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 leading-[1.1]">
             Go Live.<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
               Grow Your Brand.
@@ -200,16 +211,20 @@ export default function Home() {
               </blockquote>
 
               <div className="bg-muted/50 rounded-xl p-6 border border-border font-mono text-sm space-y-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-muted-foreground uppercase tracking-widest">The 101 Night Market</span>
+                <div className="flex items-center gap-4 mb-4">
                   <img
                     src="/nightmarket-logo.webp"
                     alt="101 Night Market"
-                    className="h-10 w-auto opacity-90"
+                    className="h-20 w-auto"
                     loading="lazy"
                     decoding="async"
                     data-testid="img-nightmarket-logo"
                   />
+                  <div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Powered by GLCN</div>
+                    <div className="text-base font-bold text-foreground leading-tight">The 101 Night Market</div>
+                    <div className="text-xs text-muted-foreground">LA's Fastest Growing Night Market</div>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
