@@ -43,10 +43,10 @@ export default function Home() {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center">
             <img
-              src="/glcn-logo.webp"
-              alt="GLCN – Go Live Creator Network"
-              className="h-16 w-auto"
-              data-testid="img-glcn-logo-nav"
+              src="/nightmarket-logo.webp"
+              alt="101 Night Market"
+              className="h-12 w-auto"
+              data-testid="img-nightmarket-logo-nav"
             />
           </div>
           <Button
