@@ -188,7 +188,7 @@ export default function Home() {
                   <Star className="w-5 h-5 fill-current" />
                   Success Story
                 </div>
-                <div className="text-2xl font-black mb-1">12,500+</div>
+                <div className="text-2xl font-black mb-1">60,000+</div>
                 <div className="text-sm text-muted-foreground">TikTok Followers built from scratch</div>
               </div>
             </div>
