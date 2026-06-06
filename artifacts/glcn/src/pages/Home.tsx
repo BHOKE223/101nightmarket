@@ -45,7 +45,7 @@ export default function Home() {
             <img
               src="/glcn-logo.webp"
               alt="GLCN – Go Live Creator Network"
-              className="h-12 w-auto"
+              className="h-16 w-auto"
               data-testid="img-glcn-logo-nav"
             />
           </div>
