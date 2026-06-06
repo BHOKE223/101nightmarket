@@ -319,3 +319,43 @@
     inset: -1px;
   }
 }
+
+/* Scroll-triggered fade-in animations (replaces framer-motion) */
+.fade-in {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.fade-in.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-in-left {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.fade-in-left.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.fade-in-right {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  transition-delay: 0.1s;
+}
+.fade-in-right.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in, .fade-in-left, .fade-in-right {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
