@@ -68,13 +68,17 @@ export default function Home() {
         <div className="container mx-auto max-w-4xl text-center relative z-10 fade-in is-visible">
           {/* GLCN Logo — main hero focus */}
           <div className="flex justify-center mb-6">
-            <img
-              src="/glcn-logo.webp"
-              alt="GLCN – Go Live Creator Network"
-              className="w-64 sm:w-80 md:w-96 h-auto drop-shadow-[0_0_40px_rgba(255,80,80,0.4)] [mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black_55%,transparent_100%)]"
-              data-testid="img-glcn-logo-hero"
-              fetchPriority="high"
-            />
+            <div className="relative w-64 sm:w-80 md:w-96 rounded-full overflow-hidden drop-shadow-[0_0_40px_rgba(255,80,80,0.4)]">
+              <img
+                src="/glcn-logo.webp"
+                alt="GLCN – Go Live Creator Network"
+                className="w-full h-auto block"
+                data-testid="img-glcn-logo-hero"
+                fetchPriority="high"
+              />
+              {/* soft edge fade overlay */}
+              <div className="absolute inset-0 rounded-full" style={{background: 'radial-gradient(circle, transparent 55%, rgba(9,9,18,0.6) 75%, rgb(9,9,18) 100%)'}} />
+            </div>
           </div>
 
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border border-border text-sm font-medium mb-8">
