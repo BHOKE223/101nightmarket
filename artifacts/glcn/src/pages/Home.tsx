@@ -41,11 +41,13 @@ export default function Home() {
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Zap className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-xl tracking-tight">GLCN</span>
+          <div className="flex items-center">
+            <img
+              src="/glcn-logo.webp"
+              alt="GLCN – Go Live Creator Network"
+              className="h-12 w-auto"
+              data-testid="img-glcn-logo-nav"
+            />
           </div>
           <Button
             onClick={handleApply}
@@ -198,6 +200,17 @@ export default function Home() {
               </blockquote>
 
               <div className="bg-muted/50 rounded-xl p-6 border border-border font-mono text-sm space-y-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground uppercase tracking-widest">The 101 Night Market</span>
+                  <img
+                    src="/nightmarket-logo.webp"
+                    alt="101 Night Market"
+                    className="h-10 w-auto opacity-90"
+                    loading="lazy"
+                    decoding="async"
+                    data-testid="img-nightmarket-logo"
+                  />
+                </div>
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
                   <span className="text-muted-foreground w-24">Location:</span>
