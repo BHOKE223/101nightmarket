@@ -80,7 +80,7 @@ function StandardCell({ booth, selected, onClick }: { booth: Booth; selected: bo
   return (
     <div
       onClick={avail ? onClick : undefined}
-      className={`flex items-center justify-center rounded border text-[11px] font-bold h-9 transition-all select-none ${style} ${avail ? "cursor-pointer" : "cursor-default"}`}
+      className={`flex items-center justify-center rounded border text-[11px] font-bold w-9 h-9 transition-all select-none flex-shrink-0 ${style} ${avail ? "cursor-pointer" : "cursor-default"}`}
     >
       {booth.label}
     </div>
@@ -172,7 +172,7 @@ export function FloorMap() {
             <div className="flex gap-2">
 
               {/* Side A */}
-              <div className="flex-1 flex flex-col gap-1">
+              <div className="flex-1 flex flex-col items-center gap-1">
                 <div className="text-[9px] text-zinc-600 uppercase tracking-widest text-center pb-0.5">Side A</div>
                 {data.sideA.map(b => (
                   <StandardCell key={b.id} booth={b}
@@ -182,21 +182,17 @@ export function FloorMap() {
               </div>
 
               {/* Aisle separator */}
-              <div className="flex flex-col items-center gap-0 w-8 pt-5">
-                {Array.from({ length: 20 }).map((_, i) => (
-                  <div key={i} className={`w-px flex-1 ${i % 2 === 0 ? "bg-zinc-700" : "bg-transparent"}`} />
-                ))}
-                <span className="text-[8px] text-zinc-600 uppercase tracking-[0.2em] rotate-90 whitespace-nowrap mt-1 mb-1"
+              <div className="flex flex-col items-center w-8 pt-5 self-stretch">
+                <div className="flex-1 w-px bg-zinc-700/50" />
+                <span className="text-[8px] text-zinc-600 uppercase tracking-[0.15em] my-2 whitespace-nowrap"
                   style={{ writingMode: "vertical-rl" }}>
                   ← aisle →
                 </span>
-                {Array.from({ length: 20 }).map((_, i) => (
-                  <div key={`b${i}`} className={`w-px flex-1 ${i % 2 === 0 ? "bg-zinc-700" : "bg-transparent"}`} />
-                ))}
+                <div className="flex-1 w-px bg-zinc-700/50" />
               </div>
 
               {/* Side B */}
-              <div className="flex-1 flex flex-col gap-1">
+              <div className="flex-1 flex flex-col items-center gap-1">
                 <div className="text-[9px] text-zinc-600 uppercase tracking-widest text-center pb-0.5">Side B</div>
                 {data.sideB.map(b => (
                   <StandardCell key={b.id} booth={b}
