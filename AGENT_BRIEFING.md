@@ -69,7 +69,10 @@ No `WHOP_PLAN_ID` env var needed — plan IDs are stored in the database.
 Thursday, Friday, Saturday, Sunday, All Days
 
 ### Location pricing
-The floor map has two locations: **Van Nuys** and **Hollywood**. Pricing above applies to both locations equally unless the admin sets location-specific overrides (which the admin pricing page supports).
+The floor map has two locations: **Van Nuys** and **Hollywood**. Pricing above applies to **both locations equally**. Hollywood is launching in July 2026 — it starts with the same pricing as Van Nuys. The admin pricing page allows per-location price overrides after launch if needed.
+
+### Market days & hours
+Same days and open hours for both locations: **Thursday, Friday, Saturday, Sunday** (with an "All Days" 4-day bundle option).
 
 ---
 
