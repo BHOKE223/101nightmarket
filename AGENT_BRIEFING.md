@@ -452,11 +452,37 @@ Admin-only area (protect with a simple hardcoded admin password env var `ADMIN_P
 
 Admin pages:
 - `/admin` — dashboard: pending applications count, recent bookings, quick stats
-- `/admin/applications` — list all applications, filter by status, view full application details, Approve / Reject / Waitlist buttons. Approving sends the booking link email automatically.
+- `/admin/applications` — list all applications, filter by status, view full details, Approve / Reject / Waitlist buttons. Approving sends the booking link email automatically.
 - `/admin/bookings` — list all confirmed bookings, booth assignments, filter by location/date
-- `/admin/reports` — financial reports with CSV export (see details below)
+- `/admin/reports` — financial reports with CSV export
 - `/admin/pricing` — edit booth pricing per type
-- `/admin/floor-map` — view floor map with real-time booth status for each location
+- `/admin/floor-map` — floor map with real-time booth status per location
+
+#### Admin application review — selection criteria
+When admin views an application at `/admin/applications`, the following criteria must be surfaced prominently to help them make a decision. These are the official criteria used to evaluate vendors:
+
+**All locations:**
+- Product quality (from business description + photos)
+- Presentation (photos of booth/products)
+- Experience (has participated in night markets before — Yes/No)
+- Fit for the market (category + booth type)
+
+**Hollywood — additional criterion (called out explicitly):**
+- Social media presence (Instagram URL + follower count shown prominently)
+- Hollywood has a specific notice: *"Due to limited space and high demand, vendor applications are reviewed based on product quality, presentation, social media presence, experience, and overall fit for the market. Submission of an application does not guarantee acceptance."*
+
+**Admin application card must prominently display:**
+1. Business name + category + booth type requested
+2. Location applied for (Van Nuys / Hollywood) — with Hollywood badge if applicable
+3. Instagram handle + follower count (highlighted for Hollywood)
+4. Has participated before (Yes/No badge)
+5. Has generator (Yes/No badge)
+6. Preferred start date + available days
+7. Business description (expandable)
+8. Product photos (thumbnail grid, click to enlarge)
+9. Space/equipment requirements
+10. Status badge + action buttons: **Approve** / **Waitlist** / **Reject**
+11. If rejecting — show a required text field for rejection reason (stored in DB, included in rejection email)
 
 ---
 
