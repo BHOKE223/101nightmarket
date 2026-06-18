@@ -28,10 +28,9 @@ description: Key product decisions, timezone rules, calendar integration plan, a
 
 ## Payments
 - Provider: Whop (decided earlier in session).
-- **Fee structure:** Vendor pays one combined charge (booth price + developer/processing fee). All funds land in owner's bank account via Whop. The night market venue's share is transferred separately by the owner after the fact.
-- Each booking record must store: booth price, developer fee amount, and venue share — so the admin reconciliation view can show exactly what to transfer to the venue each week.
-- Developer fee is added on top of booth price on the vendor's receipt (e.g. $85 booth + $10 fee = $95 total charged).
-- Test the full flow in staging: charge including fee, verify payout routing, and confirm per-booking breakdown in admin view.
+- **Fee structure:** Whop handles the revenue split natively. Bulk of each payment routes to the main night market business bank account; a ~3% developer fee routes automatically to the owner's separate account. No manual transfers needed — Whop's split-pay feature does this at the platform level.
+- Configure Whop revenue split via Whop dashboard/API during setup.
+- Test the full split-pay flow in staging to confirm both accounts receive their correct share.
 
 ## SMS
 - Provider: Twilio for vendor notifications.
