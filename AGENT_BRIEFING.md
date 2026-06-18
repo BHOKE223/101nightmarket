@@ -47,16 +47,17 @@ No `WHOP_PLAN_ID` env var needed — plan IDs are stored in the database.
 |-----------|------|-----------|
 | Food Vendor Booth | 10×10 | $100 |
 | Food Vendor Booth | 10×20 | $150 |
-| Pre-Packaged Vendor Booth | 10×10 | $75 |
+| Pre-Packaged Food Booth | 10×10 | $75 |
 | Retail Vendor Booth | 10×10 | $50 |
 | Information Booth | 10×10 | $100 |
+| Food Truck | N/A (extremely limited) | TBD by admin |
 
 ### 4-day bundle pricing
 | Booth Type | Size | Bundle Price |
 |-----------|------|-------------|
 | Food Vendor Booth - 4 Days | 10×10 | $400 |
 | Food Vendor Booth - 4 Days | 10×20 | $600 |
-| Pre-Packaged Vendor Booth - 4 Days | 10×10 | $300 |
+| Pre-Packaged Food Booth - 4 Days | 10×10 | $300 |
 | Retail Vendor Booth - 4 Days | 10×10 | $200 |
 
 ### Add-ons
@@ -65,14 +66,62 @@ No `WHOP_PLAN_ID` env var needed — plan IDs are stored in the database.
 | Overnight Booth Security Fee | $10/night |
 > Overnight security: covers vendors who leave their booth set up on-site after market hours.
 
-### Market days available
-Thursday, Friday, Saturday, Sunday, All Days
+### Market locations, days & hours
+- **Van Nuys:** 16955 Sherman Way, Van Nuys
+- **Hollywood:** Walk of Fame
+- **Days:** Thursday – Sunday (+ "All Days" 4-day bundle)
+- **Hours:** 5:00 PM – 11:00 PM both locations
 
 ### Location pricing
-The floor map has two locations: **Van Nuys** and **Hollywood**. Pricing above applies to **both locations equally**. Hollywood is launching in July 2026 — it starts with the same pricing as Van Nuys. The admin pricing page allows per-location price overrides after launch if needed.
+Both locations start with identical pricing. Hollywood launches July 2026. Admin can set per-location price overrides at any time via the pricing admin page.
 
-### Market days & hours
-Same days and open hours for both locations: **Thursday, Friday, Saturday, Sunday** (with an "All Days" 4-day bundle option).
+---
+
+## Vendor Application Fields (complete list from live JotForm)
+
+These are all the fields vendors fill out. They apply to either Van Nuys or Hollywood location.
+
+### Contact & Business Info (all required)
+| Field | Type | Notes |
+|-------|------|-------|
+| Business Name | Text | |
+| Contact Person First Name | Text | |
+| Contact Person Last Name | Text | |
+| Email Address | Email | |
+| Phone Number | Phone | Format: (000) 000-0000 |
+
+### Location & Booth Selection (all required)
+| Field | Type | Notes |
+|-------|------|-------|
+| Which 101 Night Market location? | Dropdown | Van Nuys / Hollywood |
+| Why should your business be selected for the Hollywood location? | Textarea | Conditional — only shown when Hollywood is selected |
+| General Vendor Category | Checkboxes | Prepared Food / Packaged Food / Retail / Other |
+| Vendor Category Details | Dropdown | Sub-category based on general category |
+| Booth Size/Type | Checkboxes | 10×10 Food Space / 10×20 Food Space / 10×10 Prepackaged Food Space / Food Truck (Extremely Limited) / 10×10 Retail |
+
+### Business Profile (all required)
+| Field | Type | Notes |
+|-------|------|-------|
+| Brief Description of Business/Concept | Textarea | 500 words or less |
+| List up to three menu items | Textarea | |
+| Upload Photos of Products or Booth | File upload | Required |
+| Instagram | URL | Full URL e.g. http://www.instagram.com/handle/ |
+| Instagram Follower Count | Radio | Under 1000 / 1000–5000 / 5000–10,000 / 10,000+ |
+
+### Logistics (all required)
+| Field | Type | Notes |
+|-------|------|-------|
+| Do you have a generator? | Radio | Yes / No |
+| Have you participated in night markets or similar events before? | Radio | Yes / No |
+| Space or equipment requirements | Textarea | e.g. electricity, table size |
+| Preferred Start Date | Date | MM-DD-YYYY |
+| Which days are you available? | Checkboxes | Thursday / Friday / Saturday / Sunday / All Days |
+
+### Final Step
+| Field | Type | Notes |
+|-------|------|-------|
+| How did you hear about us? | Dropdown | |
+| I agree to abide by the night market's rules and regulations | Checkbox | Required to submit |
 
 ---
 
