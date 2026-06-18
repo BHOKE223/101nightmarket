@@ -1,7 +1,7 @@
 # Agent Briefing — 101 Night Market Vendor Portal
 
 ## What this is
-You are continuing development of the 101 Night Market vendor booking and payment portal. This primary repl already contains an interactive floor map UI (clickable booth grid for Van Nuys and Hollywood). Your job is to add the full payment, admin, and pricing infrastructure that has been designed and tested in a staging repl.
+You are continuing development of the 101 Night Market vendor booking and payment portal. This primary repl already contains an interactive floor map UI (clickable booth grid for Van Nuys and Hollywood). Your job is to add the full payment, admin, and pricing infrastructure alongside the existing floor map.
 
 **Do not redesign anything. Wire in the backend alongside whatever floor map code already exists here.**
 
@@ -35,13 +35,52 @@ No `WHOP_PLAN_ID` env var needed — plan IDs are stored in the database.
 - Product: `prod_DfqWDt9Ip5GMq` (101 Night Market)
 - Developer rev share: **3.5% pre-fee**, set company-wide as a team member
 
-### Existing Whop plans (already created — use these exact IDs)
-| Booth Type | Location | Price | Whop Plan ID |
-|-----------|----------|-------|-------------|
-| Standard Booth | Van Nuys | $85 | `plan_4EsQToHGWlEqN` |
-| Endcap Booth | Van Nuys | $120 | `plan_AGBR2EFAs1NhP` |
-| Standard Booth | Hollywood | $95 | `plan_yAGFGeDwZbCgD` |
-| Endcap Booth | Hollywood | $135 | `plan_z8hqmTXZ7iKNM` |
+### Whop plans
+**Do NOT use any hardcoded plan IDs.** All Whop plans must be created fresh via the API at server startup if they don't exist yet, using the correct prices below. Store the resulting plan IDs in the `booth_pricing` table. The plan creation endpoint and payload are documented in the API routes section below.
+
+---
+
+## REAL Pricing (source of truth — from live JotForm)
+
+### Single-day booth pricing
+| Booth Type | Size | Price/Day |
+|-----------|------|-----------|
+| Food Vendor Booth | 10×10 | $100 |
+| Food Vendor Booth | 10×20 | $150 |
+| Pre-Packaged Vendor Booth | 10×10 | $75 |
+| Retail Vendor Booth | 10×10 | $50 |
+| Information Booth | 10×10 | $100 |
+
+### 4-day bundle pricing
+| Booth Type | Size | Bundle Price |
+|-----------|------|-------------|
+| Food Vendor Booth - 4 Days | 10×10 | $400 |
+| Food Vendor Booth - 4 Days | 10×20 | $600 |
+| Pre-Packaged Vendor Booth - 4 Days | 10×10 | $300 |
+| Retail Vendor Booth - 4 Days | 10×10 | $200 |
+
+### Add-ons
+| Add-on | Price |
+|--------|-------|
+| Overnight Booth Security Fee | $10/night |
+> Overnight security: covers vendors who leave their booth set up on-site after market hours.
+
+### Market days available
+Thursday, Friday, Saturday, Sunday, All Days
+
+### Location pricing
+The floor map has two locations: **Van Nuys** and **Hollywood**. Pricing above applies to both locations equally unless the admin sets location-specific overrides (which the admin pricing page supports).
+
+---
+
+## Terms & Conditions (must be shown and agreed to at checkout)
+The following terms must be displayed as a required checkbox before the vendor can proceed to payment. Store `termsAgreed: true` on the booking record.
+
+**Refund & Cancellation Policy:**
+All vendor payments are non-refundable. If the event is canceled due to weather, safety concerns, or orders from the city or authorities, the event may be rescheduled at the organizer's discretion. Payments may be transferred to a future event date. No refunds will be issued for no-shows, late arrivals, early breakdowns, or failure to comply with event rules. Submission of payment confirms acceptance of these terms.
+
+**Liability Disclaimer:**
+The organizer is not responsible for loss, theft, damage, or injury to vendors, staff, equipment, or property. Vendors agree to operate at their own risk and hold the organizer harmless from any claims arising from participation.
 
 ---
 
@@ -50,7 +89,7 @@ Run `pnpm --filter @workspace/db run push` after adding these schema files.
 
 ### `lib/db/src/schema/bookings.ts`
 ```typescript
-import { pgTable, serial, text, integer, timestamp, date } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -61,11 +100,18 @@ export const bookingsTable = pgTable("bookings", {
   planId: text("plan_id").notNull(),
   vendorEmail: text("vendor_email"),
   vendorName: text("vendor_name"),
+  vendorBusinessName: text("vendor_business_name"),
   boothNumber: text("booth_number"),
+  boothType: text("booth_type"),         // e.g. "food_10x10", "retail_10x10"
+  boothSize: text("booth_size"),         // e.g. "10x10", "10x20"
   marketDate: date("market_date"),
-  marketLocation: text("market_location"),
-  amountPaid: integer("amount_paid"),
-  status: text("status").notNull().default("pending"),
+  marketDays: text("market_days"),       // e.g. "thursday,friday" or "all"
+  marketLocation: text("market_location"), // "van_nuys" | "hollywood"
+  overnightSecurity: boolean("overnight_security").default(false),
+  overnightNights: integer("overnight_nights").default(0),
+  amountPaid: integer("amount_paid"),    // in cents
+  termsAgreed: boolean("terms_agreed").notNull().default(false),
+  status: text("status").notNull().default("pending"), // pending | confirmed | cancelled
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -85,7 +131,7 @@ export const refundNotesTable = pgTable("refund_notes", {
   id: serial("id").primaryKey(),
   whopPaymentId: text("whop_payment_id").notNull(),
   whopRefundId: text("whop_refund_id"),
-  amountRefunded: integer("amount_refunded").notNull(),
+  amountRefunded: integer("amount_refunded").notNull(), // in cents
   notes: text("notes").notNull(),
   issuedBy: text("issued_by").default("admin"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -104,11 +150,13 @@ import { z } from "zod/v4";
 
 export const boothPricingTable = pgTable("booth_pricing", {
   id: serial("id").primaryKey(),
-  location: text("location").notNull(),
-  boothType: text("booth_type").notNull(),
-  label: text("label").notNull(),
-  price: integer("price").notNull(),
-  whopPlanId: text("whop_plan_id").notNull(),
+  boothType: text("booth_type").notNull(),   // e.g. "food_10x10", "food_10x20", "retail_10x10"
+  label: text("label").notNull(),             // display name
+  size: text("size").notNull(),               // "10x10" | "10x20"
+  pricePerDay: integer("price_per_day").notNull(),   // in cents
+  priceFourDay: integer("price_four_day"),           // in cents, null if no bundle
+  whopPlanIdDaily: text("whop_plan_id_daily"),       // Whop plan for single day
+  whopPlanIdFourDay: text("whop_plan_id_four_day"),  // Whop plan for 4-day bundle
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -119,130 +167,7 @@ export type InsertBoothPricing = z.infer<typeof insertBoothPricingSchema>;
 export type BoothPricing = typeof boothPricingTable.$inferSelect;
 ```
 
-### `lib/db/src/schema/index.ts`
-```typescript
-export * from "./bookings";
-export * from "./refundNotes";
-export * from "./boothPricing";
-```
-
----
-
-## Startup seeding
-On server startup, check if `booth_pricing` is empty and seed it with the 4 default booth types. Add this to `artifacts/api-server/src/lib/seed.ts` and call it from `src/index.ts` inside the `app.listen` callback.
-
-Default seed data:
-```
-van_nuys  | standard | Van Nuys Standard Booth  | $85  | plan_4EsQToHGWlEqN
-van_nuys  | endcap   | Van Nuys Endcap Booth    | $120 | plan_AGBR2EFAs1NhP
-hollywood | standard | Hollywood Standard Booth  | $95  | plan_yAGFGeDwZbCgD
-hollywood | endcap   | Hollywood Endcap Booth   | $135 | plan_z8hqmTXZ7iKNM
-```
-
----
-
-## API routes to build
-All routes live under `/api` prefix.
-
-### Whop routes (`artifacts/api-server/src/routes/whop.ts`)
-- `POST /api/whop/checkout` — body: `{ plan_id }` → calls Whop checkoutConfigurations.create, returns `{ checkout_id, purchase_url }`
-- `GET /api/whop/verify` — query: `{ checkout_id }` → verifies payment
-- `POST /api/whop/webhook` — raw body, handles `payment.completed` and `membership.went_valid`
-
-### Whop client (`artifacts/api-server/src/lib/whopClient.ts`)
-```typescript
-import WhopSDK from "@whop/sdk";
-export function getWhopClient() {
-  const key = process.env.WHOP_API_KEY;
-  if (!key) throw new Error("WHOP_API_KEY is not set");
-  return new WhopSDK({ apiKey: key });
-}
-```
-
-### Admin routes (`artifacts/api-server/src/routes/admin.ts`)
-- `POST /api/admin/refunds` — body: `{ payment_id, amount?, notes }` → calls `POST https://api.whop.com/api/v1/payments/{id}/refund`, saves notes to `refund_notes` table. Empty body = full refund, `{ amount: N }` = partial.
-- `GET /api/admin/reports` — query: `{ from?, to? }` → fetches payments + refunds from Whop, joins local refund notes, returns summary stats + transaction list
-- `GET /api/admin/reports/export` — returns CSV download with UTF-8 BOM for Excel. Columns: Date (PT), Payment ID, Vendor Email, Status, Gross ($), Whop Fee ($), Dev Fee 3.5% ($), Refunded ($), Net to Business ($), Refund Notes
-
-### Pricing routes (`artifacts/api-server/src/routes/pricing.ts`)
-- `GET /api/admin/pricing` → returns all rows from `booth_pricing` table
-- `PATCH /api/admin/pricing/:id` — body: `{ price }` → creates a NEW Whop plan at the new price via `POST https://api.whop.com/api/v2/plans`, updates `booth_pricing` record with new price and `whop_plan_id`
-
-### Whop plan creation payload
-```json
-{
-  "company_id": "biz_boYAUqKgviBMum",
-  "product_id": "prod_DfqWDt9Ip5GMq",
-  "plan_type": "one_time",
-  "release_method": "buy_now",
-  "initial_price": <number>,
-  "visibility": "hidden"
-}
-```
-Endpoint: `POST https://api.whop.com/api/v2/plans`
-Auth: `Authorization: Bearer <WHOP_API_KEY>`
-
----
-
-## Frontend pages to add (React + Vite)
-
-### `/admin/reports` — Financial Reports page
-- Date range picker (From / To) with quick buttons: This month, Last 30 days, All time
-- Run Report button → calls `GET /api/admin/reports`
-- 6 summary stat cards: Gross Revenue, Whop Fees, Dev Fee 3.5%, Refunded, Net to Business, Transaction count
-- Transaction table with columns: Date (PT), Vendor, Status badge, Gross, Whop Fee, Dev 3.5%, Net, Refund button
-- Refund button opens a modal with: amount field (blank = full refund), required notes/reason textarea, Cancel + Refund buttons
-- Export to Spreadsheet button → `GET /api/admin/reports/export` (file download)
-
-### `/admin/pricing` — Booth Pricing page
-- Lists all booth types grouped by location (Hollywood / Van Nuys)
-- Each row shows: booth type label, Whop plan ID (small mono text), current price, Edit button
-- Edit mode: inline price input, Save / Cancel buttons
-- Saving calls `PATCH /api/admin/pricing/:id` and updates the displayed price + plan ID
-- Static explainer at bottom: "When you update a price, the system automatically creates a new plan on Whop..."
-
----
-
-## Key architectural decisions (do not change these)
-
-1. **Whop SDK refunds are read-only** — SDK has no `refunds.create`. Always use direct REST: `POST https://api.whop.com/api/v1/payments/{id}/refund`
-2. **Whop plan prices cannot be updated via API** — always CREATE a new plan at the new price; old plan becomes orphaned
-3. **Refund reasons are stored locally** — Whop refund records have no notes field; we store them in `refund_notes` table keyed by `whop_payment_id`
-4. **Revenue split: 3.5% pre-fee** — developer added as team member at 3.5% company-wide. Do NOT give client Owner role in Whop (they'd be able to remove the rev share). Give them Operations role with Team, Company settings, Developer tools, and Checkout toggles OFF
-5. **Whop plan visibility: hidden** — all programmatically created plans use `visibility: "hidden"` so they don't appear publicly on the Whop storefront
-6. **CSV export includes UTF-8 BOM** (`\uFEFF`) so Excel opens it without encoding issues
-7. **All times displayed in Pacific Time** (`America/Los_Angeles`)
-8. **Redirect URL for checkout** is read from `req.headers.origin` dynamically — works across dev, staging, and production domains without hardcoding
-
----
-
-## Next feature to build after wiring in the above
-**Per-booth individual pricing + floor map checkout integration:**
-
-Each booth on the floor map (A1–A20, B1–B20, E1, E2 per location) needs:
-- Its own DB record with individual price, status (open/pending/taken), and vendor info
-- Clicking a booth triggers a real Whop checkout at that booth's specific price
-- After payment webhook fires, booth status updates to "taken"
-- Admin can set price per individual booth directly on the map or in a table view
-
-Start by reading the existing floor map component code to understand the current data structure before building this.
-
----
-
-## CRITICAL: Concurrent booking race condition prevention
-
-**Problem:** Two vendors can click the same booth at the same millisecond, both see it as "open", both get sent to Whop checkout, both pay — resulting in a double booking.
-
-**Solution: Database-level reservation lock system**
-
-### How it works
-1. Vendor clicks a booth → server immediately inserts a **reservation** row in a `booth_reservations` table inside a transaction
-2. A **unique constraint on `(booth_number, market_date, location)`** means only ONE insert can win — the second one gets a conflict error at the DB level, not the app level
-3. Winning vendor gets redirected to Whop checkout; their reservation holds the booth for **15 minutes**
-4. On Whop `payment.completed` webhook → reservation converts to a confirmed booking, status = `"confirmed"`
-5. If vendor abandons checkout → a cleanup job or TTL check marks the reservation as expired after 15 minutes → booth returns to `"open"`
-
-### `booth_reservations` table schema
+### `lib/db/src/schema/boothReservations.ts`
 ```typescript
 import { pgTable, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
 
@@ -258,7 +183,6 @@ export const boothReservationsTable = pgTable("booth_reservations", {
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
-  // THIS is the race condition guard — DB enforces only one active reservation per booth per date
   uniqueBoothDate: unique("unique_booth_date_location").on(
     table.boothNumber,
     table.marketDate,
@@ -267,12 +191,163 @@ export const boothReservationsTable = pgTable("booth_reservations", {
 }));
 ```
 
-### Checkout route logic (enforce atomically)
+### `lib/db/src/schema/index.ts`
 ```typescript
-// POST /api/whop/checkout
-// body: { booth_number, market_date, market_location, plan_id }
+export * from "./bookings";
+export * from "./refundNotes";
+export * from "./boothPricing";
+export * from "./boothReservations";
+```
 
-// 1. Check for existing non-expired reservation
+---
+
+## Startup seeding
+On server startup, check if `booth_pricing` is empty and seed it. Whop plan IDs start as null — they get populated the first time a vendor goes to checkout for that booth type (lazy plan creation). Add `seed.ts` and call it from `src/index.ts` inside the `app.listen` callback.
+
+```typescript
+// Default seed — prices in cents
+const defaults = [
+  { boothType: "food_10x10",      label: "Food Vendor Booth 10×10",             size: "10x10", pricePerDay: 10000, priceFourDay: 40000 },
+  { boothType: "food_10x20",      label: "Food Vendor Booth 10×20",             size: "10x20", pricePerDay: 15000, priceFourDay: 60000 },
+  { boothType: "prepackaged_10x10", label: "Pre-Packaged Vendor Booth 10×10",   size: "10x10", pricePerDay: 7500,  priceFourDay: 30000 },
+  { boothType: "retail_10x10",    label: "Retail Vendor Booth 10×10",           size: "10x10", pricePerDay: 5000,  priceFourDay: 20000 },
+  { boothType: "information_10x10", label: "Information Booth 10×10",           size: "10x10", pricePerDay: 10000, priceFourDay: null  },
+];
+```
+
+---
+
+## API routes to build
+All routes live under `/api` prefix.
+
+### Whop routes (`artifacts/api-server/src/routes/whop.ts`)
+
+**`POST /api/whop/checkout`**
+Body: `{ booth_type, days, market_location, booth_number, market_date, overnight_security, overnight_nights, vendor_name, vendor_email, vendor_business_name }`
+- Validate terms agreed (frontend must check before calling)
+- Look up the correct Whop plan from `booth_pricing` table based on booth_type + whether days === "all" (4-day) or single
+- If plan doesn't exist yet (null), create it via Whop API first, save plan ID to DB
+- Check for active reservation (race condition guard — see section below)
+- Create Whop checkoutConfiguration, return `{ checkout_id, purchase_url }`
+- Insert pending reservation into `booth_reservations`
+
+**`GET /api/whop/verify`**
+Query: `{ checkout_id }` → verifies payment status with Whop
+
+**`POST /api/whop/webhook`**
+Raw body. Handles:
+- `payment.completed` → update reservation status to confirmed, update booking record
+- `membership.went_valid` → same
+
+### Whop client (`artifacts/api-server/src/lib/whopClient.ts`)
+```typescript
+import WhopSDK from "@whop/sdk";
+export function getWhopClient() {
+  const key = process.env.WHOP_API_KEY;
+  if (!key) throw new Error("WHOP_API_KEY is not set");
+  return new WhopSDK({ apiKey: key });
+}
+```
+
+### Whop plan creation (used lazily on first checkout per booth type)
+```
+POST https://api.whop.com/api/v2/plans
+Authorization: Bearer <WHOP_API_KEY>
+Content-Type: application/json
+
+{
+  "company_id": "biz_boYAUqKgviBMum",
+  "product_id": "prod_DfqWDt9Ip5GMq",
+  "plan_type": "one_time",
+  "release_method": "buy_now",
+  "initial_price": <dollars as number, e.g. 100>,
+  "visibility": "hidden"
+}
+```
+
+### Overnight security add-on
+Overnight fee is $10/night. Since Whop plans are fixed amounts, calculate the total (booth price + overnight_nights × $10) and create a single Whop plan at the combined price if one doesn't exist at that exact amount. Store the combined-price plan ID in the booking record.
+
+### Admin routes (`artifacts/api-server/src/routes/admin.ts`)
+- `POST /api/admin/refunds` — body: `{ payment_id, amount?, notes }` → calls `POST https://api.whop.com/api/v1/payments/{id}/refund`, saves notes to `refund_notes`. Empty body = full refund, `{ amount: N }` in dollars = partial.
+- `GET /api/admin/reports` — query: `{ from?, to? }` → fetches payments from Whop, joins local refund notes, returns summary stats + transaction list
+- `GET /api/admin/reports/export` — CSV download with UTF-8 BOM. Columns: Date (PT), Payment ID, Vendor Name, Vendor Email, Booth Type, Booth #, Location, Days, Status, Gross ($), Whop Fee ($), Dev 3.5% ($), Refunded ($), Net ($), Refund Notes
+
+### Pricing routes (`artifacts/api-server/src/routes/pricing.ts`)
+- `GET /api/admin/pricing` → all rows from `booth_pricing`
+- `PATCH /api/admin/pricing/:id` — body: `{ price_per_day?, price_four_day? }` → creates NEW Whop plan(s) at new price(s), updates DB record
+
+---
+
+## Checkout flow (what vendor sees)
+
+When a vendor clicks an open booth on the floor map, a slide-up or modal panel appears with:
+
+1. **Booth info** — booth number, location, size (from floor map data)
+2. **Vendor type selector** — radio/select: Food 10×10 | Food 10×20 | Pre-Packaged | Retail | Information
+3. **Days selector** — checkboxes: Thu / Fri / Sat / Sun / All Days (selecting All Days = 4-day bundle price)
+4. **Overnight security** — optional checkbox: "Add overnight booth security ($10/night)" with nights field
+5. **Price summary** — live-calculated total based on selections
+6. **Vendor info fields** — Name, Business Name, Email (required)
+7. **Terms & Conditions checkbox** — required, full text displayed (see T&C section above)
+8. **"Proceed to Payment" button** → calls `POST /api/whop/checkout` → redirects to Whop checkout URL
+
+---
+
+## Frontend pages to add (React + Vite)
+
+### `/admin/reports` — Financial Reports page
+- Date range picker (From / To) with quick buttons: This month, Last 30 days, All time
+- Run Report button → calls `GET /api/admin/reports`
+- 6 summary stat cards: Gross Revenue, Whop Fees, Dev Fee 3.5%, Refunded, Net to Business, Transaction count
+- Transaction table: Date (PT), Vendor, Booth Type, Location, Days, Status badge, Gross, Whop Fee, Dev 3.5%, Net, Refund button
+- Refund button opens modal: amount field (blank = full refund), required notes/reason textarea, Cancel + Refund buttons
+- Export to Spreadsheet button → `GET /api/admin/reports/export`
+
+### `/admin/pricing` — Booth Pricing page
+- Lists all booth types
+- Each row: label, size, daily price, 4-day bundle price, Edit button
+- Edit mode: inline price inputs for daily + bundle, Save / Cancel
+- Saving calls `PATCH /api/admin/pricing/:id`
+- Explainer: "When you update a price, the system automatically creates a new plan on Whop. Existing bookings are not affected."
+
+---
+
+## Key architectural decisions (do not change these)
+
+1. **Whop SDK refunds are read-only** — SDK has no `refunds.create`. Always use direct REST: `POST https://api.whop.com/api/v1/payments/{id}/refund`
+2. **Whop plan prices cannot be updated via API** — always CREATE a new plan at the new price; old plan becomes orphaned
+3. **Whop plans are created lazily** — created on first checkout for that booth type/price combo, plan ID stored in DB
+4. **Refund reasons stored locally** — Whop has no notes field on refunds; store in `refund_notes` table
+5. **Revenue split: 3.5% pre-fee** — developer added as team member at 3.5%. Do NOT give client Owner role in Whop — give them Operations role with Team, Company settings, Developer tools, and Checkout toggles OFF
+6. **Whop plan visibility: hidden** — all programmatically created plans use `visibility: "hidden"`
+7. **All prices stored in cents** (integer) in the DB — convert to dollars only at display/API boundary
+8. **CSV export includes UTF-8 BOM** (`\uFEFF`) so Excel opens without encoding issues
+9. **All times in Pacific Time** (`America/Los_Angeles`)
+10. **Redirect URL for checkout** reads from `req.headers.origin` dynamically — works across all domains
+
+---
+
+## CRITICAL: Concurrent booking race condition prevention
+
+**Problem:** Two vendors click the same booth simultaneously → both see it open → both pay → double booking.
+
+**Solution: DB-level unique constraint + reservation lock**
+
+1. Vendor clicks booth → server inserts a reservation row (15-min TTL)
+2. Unique constraint on `(booth_number, market_date, market_location)` — only ONE insert wins at the DB level
+3. Second vendor gets 409 → "This booth was just taken. Please choose another."
+4. Payment webhook fires → reservation status → `confirmed`
+5. Abandoned checkout → reservation expires after 15 min → booth returns to open
+
+### Checkout route reservation logic
+```typescript
+// 1. Clean up expired reservations first
+await db.update(boothReservationsTable)
+  .set({ status: "expired" })
+  .where(and(lt(boothReservationsTable.expiresAt, new Date()), eq(boothReservationsTable.status, "pending")));
+
+// 2. Check for active reservation
 const existing = await db.select().from(boothReservationsTable)
   .where(and(
     eq(boothReservationsTable.boothNumber, booth_number),
@@ -283,69 +358,45 @@ const existing = await db.select().from(boothReservationsTable)
   )).limit(1);
 
 if (existing.length > 0) {
-  return res.status(409).json({ error: "This booth is currently being reserved by another vendor. Please try again in a few minutes or choose a different booth." });
+  return res.status(409).json({ error: "This booth is currently being reserved. Please try again shortly or choose a different booth." });
 }
 
-// 2. Create Whop checkout
-const checkout = await whop.checkoutConfigurations.create(...);
+// 3. Create Whop checkout first
+const checkout = await createWhopCheckout(...);
 
-// 3. Insert reservation — unique constraint prevents race condition
+// 4. Insert reservation — unique constraint is the real guard
 try {
   await db.insert(boothReservationsTable).values({
     boothNumber: booth_number,
     marketDate: market_date,
     marketLocation: market_location,
     checkoutId: checkout.id,
-    expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 min
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     status: "pending",
   });
 } catch (err) {
-  // Unique constraint violation — another vendor just beat them to it
+  // Unique constraint violation — another vendor just won the race
   return res.status(409).json({ error: "This booth was just taken by another vendor. Please choose a different booth." });
 }
 
 return res.json({ checkout_id: checkout.id, purchase_url: checkout.purchase_url });
 ```
 
-### Webhook confirms the reservation
-```typescript
-// In payment.completed handler:
-await db.update(boothReservationsTable)
-  .set({ status: "confirmed", whopPaymentId: payment.id })
-  .where(eq(boothReservationsTable.checkoutId, checkoutId));
-```
+### Floor map status logic (priority order)
+1. Confirmed reservation → **taken** (red, unclickable)
+2. Pending reservation + not expired → **pending** (yellow, unclickable, tooltip: "Being reserved...")
+3. Otherwise → **open** (green, clickable)
 
-### Expired reservation cleanup
-On every `GET /api/booths` (floor map load), run a quick cleanup first:
-```typescript
-await db.update(boothReservationsTable)
-  .set({ status: "expired" })
-  .where(and(
-    lt(boothReservationsTable.expiresAt, new Date()),
-    eq(boothReservationsTable.status, "pending")
-  ));
-```
-
-### Floor map booth status logic (priority order)
-1. If confirmed reservation exists for booth+date+location → `"taken"` (red, unclickable)
-2. If pending reservation exists AND not expired → `"pending"` (yellow, unclickable, show "Being reserved...")
-3. Otherwise → `"open"` (green, clickable)
-
-### Frontend: optimistic UI on click
-When a vendor clicks a booth:
-- Immediately show a loading spinner on that booth
-- Disable the booth button to prevent double-clicks from the same browser
-- If the API returns 409 → show a clear message: "This booth was just taken. Please choose another."
-- If success → redirect to Whop checkout URL
+### Frontend on booth click
+- Immediately show loading spinner on that booth, disable the button
+- 409 response → show inline error message, re-enable booth
+- Success → redirect to Whop checkout URL
 
 ---
 
-## Pricing summary (for reference)
-| Location | Type | Price |
-|----------|------|-------|
-| Van Nuys | Standard | $85/night |
-| Van Nuys | Endcap | $120/night |
-| Hollywood | Standard | $95/night |
-| Hollywood | Endcap | $135/night |
-
-Notification system: email only (no SMS), using Resend. Pacific Time for all dates/times.
+## Notification system
+- Email only (no SMS)
+- Use Resend for transactional email
+- Send confirmation email to vendor on `payment.completed` webhook
+- Send notification email to admin on every new booking
+- All timestamps in Pacific Time (`America/Los_Angeles`)
