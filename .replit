@@ -39,6 +39,7 @@ externalPort = 3000
 
 [userenv.shared]
 WHOP_PLAN_ID = "plan_4EsQToHGWlEqN"
+GITHUB_TOKEN = "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"
 
 [nix]
 channel = "stable-25_05"
