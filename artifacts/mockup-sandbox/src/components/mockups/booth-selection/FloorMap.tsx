@@ -72,17 +72,24 @@ function StandardCell({ booth, selected, onClick }: { booth: Booth; selected: bo
     selected
       ? "bg-sky-500/30 border-sky-400 text-sky-200 scale-105 shadow-sky-500/30 shadow"
       : booth.status === "available"
-      ? "bg-emerald-500/15 border-emerald-600 text-emerald-300 hover:bg-emerald-500/25 active:scale-95"
+      ? "bg-emerald-500/15 border-emerald-600 text-emerald-300 hover:bg-emerald-500/25 active:scale-[0.97]"
       : booth.status === "pending"
       ? "bg-yellow-500/15 border-yellow-600 text-yellow-400"
-      : "bg-zinc-800/80 border-zinc-700 text-zinc-600";
+      : "bg-zinc-800/80 border-zinc-700 text-zinc-500";
 
   return (
     <div
       onClick={avail ? onClick : undefined}
-      className={`flex items-center justify-center rounded border text-[11px] font-bold w-9 h-9 transition-all select-none flex-shrink-0 ${style} ${avail ? "cursor-pointer" : "cursor-default"}`}
+      className={`flex flex-col items-center justify-center rounded border w-16 h-16 transition-all select-none flex-shrink-0 gap-0.5 ${style} ${avail ? "cursor-pointer" : "cursor-default"}`}
     >
-      {booth.label}
+      <span className="text-[13px] font-black leading-none">{booth.label}</span>
+      <span className="text-[10px] font-semibold leading-none opacity-80">${booth.price}</span>
+      <span className={`text-[9px] leading-none font-medium mt-0.5 ${
+        booth.status === "available" ? "text-emerald-400/70" :
+        booth.status === "pending"   ? "text-yellow-400/70"  : "text-zinc-600"
+      }`}>
+        {booth.status === "available" ? "open" : booth.status === "pending" ? "pending" : "taken"}
+      </span>
     </div>
   );
 }
