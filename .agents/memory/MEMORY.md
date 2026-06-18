@@ -1,0 +1,1 @@
+- [Whop Payment Setup](whop-setup.md) — Whop not in Replit connector catalog; use direct API key + known plan creation quirks.
