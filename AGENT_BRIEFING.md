@@ -139,6 +139,69 @@ The organizer is not responsible for loss, theft, damage, or injury to vendors, 
 ## Database schema to create
 Run `pnpm --filter @workspace/db run push` after adding these schema files.
 
+### `lib/db/src/schema/vendorApplications.ts`
+```typescript
+import { pgTable, serial, text, boolean, timestamp } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
+
+export const vendorApplicationsTable = pgTable("vendor_applications", {
+  id: serial("id").primaryKey(),
+
+  // Contact & business info
+  businessName: text("business_name").notNull(),
+  contactFirstName: text("contact_first_name").notNull(),
+  contactLastName: text("contact_last_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+
+  // Location & booth preference
+  location: text("location").notNull(),             // "van_nuys" | "hollywood"
+  hollywoodWhySelected: text("hollywood_why_selected"), // conditional, Hollywood only
+  generalCategory: text("general_category").notNull(), // "prepared_food" | "packaged_food" | "retail" | "other"
+  categoryDetails: text("category_details").notNull(),
+  boothType: text("booth_type").notNull(),          // "food_10x10" | "food_10x20" | "prepackaged_10x10" | "food_truck" | "retail_10x10"
+
+  // Business profile
+  businessDescription: text("business_description").notNull(),
+  menuItems: text("menu_items"),                    // up to 3 items
+  photoUrls: text("photo_urls"),                    // comma-separated uploaded file URLs
+  instagramUrl: text("instagram_url"),
+  instagramFollowerCount: text("instagram_follower_count"), // "under_1000" | "1000_5000" | "5000_10000" | "10000_plus"
+
+  // Logistics
+  hasGenerator: boolean("has_generator"),
+  hasParticipatedBefore: boolean("has_participated_before"),
+  spaceRequirements: text("space_requirements"),
+  preferredStartDate: text("preferred_start_date"),
+  availableDays: text("available_days"),            // comma-separated: "thursday,friday,saturday"
+
+  // How they heard about us
+  howHeard: text("how_heard"),
+
+  // Agreement
+  agreedToRules: boolean("agreed_to_rules").notNull().default(false),
+
+  // Admin workflow
+  status: text("status").notNull().default("pending_review"),
+  // pending_review | approved | rejected | waitlisted
+  approvedAt: timestamp("approved_at"),
+  approvedBy: text("approved_by"),
+  rejectionReason: text("rejection_reason"),
+  bookingToken: text("booking_token").unique(),     // UUID sent in approval email
+  bookingTokenExpiresAt: timestamp("booking_token_expires_at"),
+  notifiedAt: timestamp("notified_at"),             // when approval/rejection email was sent
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertVendorApplicationSchema = createInsertSchema(vendorApplicationsTable)
+  .omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertVendorApplication = z.infer<typeof insertVendorApplicationSchema>;
+export type VendorApplication = typeof vendorApplicationsTable.$inferSelect;
+```
+
 ### `lib/db/src/schema/bookings.ts`
 ```typescript
 import { pgTable, serial, text, integer, boolean, timestamp, date } from "drizzle-orm/pg-core";
@@ -331,18 +394,69 @@ Overnight fee is $10/night. Since Whop plans are fixed amounts, calculate the to
 
 ---
 
-## Checkout flow (what vendor sees)
+## TWO-FLOW SYSTEM: Application → Approval → Booking → Payment
 
-When a vendor clicks an open booth on the floor map, a slide-up or modal panel appears with:
+The system has two completely separate flows. Do NOT combine them.
 
-1. **Booth info** — booth number, location, size (from floor map data)
-2. **Vendor type selector** — radio/select: Food 10×10 | Food 10×20 | Pre-Packaged | Retail | Information
-3. **Days selector** — checkboxes: Thu / Fri / Sat / Sun / All Days (selecting All Days = 4-day bundle price)
-4. **Overnight security** — optional checkbox: "Add overnight booth security ($10/night)" with nights field
-5. **Price summary** — live-calculated total based on selections
-6. **Vendor info fields** — Name, Business Name, Email (required)
-7. **Terms & Conditions checkbox** — required, full text displayed (see T&C section above)
-8. **"Proceed to Payment" button** → calls `POST /api/whop/checkout` → redirects to Whop checkout URL
+---
+
+### FLOW 1: Vendor Application (no payment)
+
+Public-facing page at `/apply` (or linked from the main site).
+
+Vendors fill out and submit the full application. No payment is taken here. Application is stored in the DB with status `pending_review`.
+
+Admin receives an email notification of each new application.
+
+**Application DB table: `vendor_applications`**
+Store all fields from the application form (see Vendor Application Fields section). Key fields:
+```typescript
+status: text("status").default("pending_review")
+// pending_review | approved | rejected | waitlisted
+approvedAt: timestamp("approved_at")
+approvedBy: text("approved_by")
+rejectionReason: text("rejection_reason")
+notifiedAt: timestamp("notified_at") // when approval email was sent
+```
+
+---
+
+### FLOW 2: Booking + Payment (approved vendors only)
+
+After admin approves an application, the system sends the vendor a **unique approval link** via email:
+```
+https://101nightmarket.com/book?token=<secure_token>
+```
+
+The token is a short-lived (7-day) signed JWT or random UUID stored in the DB linked to their application. When vendor clicks the link they land on the booking page — no login required, token authenticates them.
+
+**Booking page flow:**
+1. Token is validated — if expired or invalid, show "This link has expired. Please contact us."
+2. Vendor sees their pre-filled info (name, business, booth type preference from application)
+3. **Location selector** — Van Nuys / Hollywood (or pre-selected if application specified one)
+4. **Floor map** — shows available booths for that location, filtered to the booth type they applied for
+5. Vendor clicks a booth → panel opens:
+   - Booth number + size confirmed
+   - **Days selector** — Thu / Fri / Sat / Sun / All Days
+   - **Overnight security add-on** — optional checkbox ($10/night)
+   - **Price summary** — live total
+   - **Terms & Conditions checkbox** — required (full text, see T&C section)
+   - **"Proceed to Payment"** → calls `POST /api/whop/checkout` → redirect to Whop
+6. After Whop payment → webhook fires → booking confirmed → booth marked taken → confirmation email sent to vendor
+
+---
+
+### FLOW 3: Admin Panel
+
+Admin-only area (protect with a simple hardcoded admin password env var `ADMIN_PASSWORD` for now — no full auth system needed yet).
+
+Admin pages:
+- `/admin` — dashboard: pending applications count, recent bookings, quick stats
+- `/admin/applications` — list all applications, filter by status, view full application details, Approve / Reject / Waitlist buttons. Approving sends the booking link email automatically.
+- `/admin/bookings` — list all confirmed bookings, booth assignments, filter by location/date
+- `/admin/reports` — financial reports with CSV export (see details below)
+- `/admin/pricing` — edit booth pricing per type
+- `/admin/floor-map` — view floor map with real-time booth status for each location
 
 ---
 
