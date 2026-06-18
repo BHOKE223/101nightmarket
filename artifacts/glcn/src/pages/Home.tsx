@@ -71,7 +71,7 @@ export default function Home() {
           className="hero-video absolute inset-0 w-full h-full object-cover"
           data-testid="video-hero-bg"
         >
-          <source src="/feature1.mp4" type="video/mp4" />
+          <source src="/feature1-opt.mp4" type="video/mp4" />
         </video>
 
         {/* Layered gradient overlay for readability */}
@@ -80,14 +80,24 @@ export default function Home() {
         {/* Content */}
         <div className="relative z-10 flex flex-col items-center text-center px-5 pt-20 pb-16 w-full max-w-4xl mx-auto">
 
-          {/* 101 Night Market logo — entrance scale + continuous bounce */}
-          <img
-            src="/logonightmarket.png"
-            alt="101 Night Market"
-            className="hero-logo w-40 sm:w-56 md:w-72 mb-6 drop-shadow-[0_0_40px_rgba(255,30,30,0.5)]"
-            data-testid="img-nightmarket-logo-hero"
-            fetchPriority="high"
-          />
+          {/* 101 Night Market logo — entrance scale + continuous bounce + smoke */}
+          <div className="relative flex items-center justify-center mb-6">
+            {/* Smoke layers — behind the logo */}
+            <div className="smoke-ring smoke-ring-1" />
+            <div className="smoke-ring smoke-ring-2" />
+            <div className="smoke-ring smoke-ring-3" />
+            <div className="smoke-wisp smoke-wisp-1" />
+            <div className="smoke-wisp smoke-wisp-2" />
+            <div className="smoke-wisp smoke-wisp-3" />
+
+            <img
+              src="/logonightmarket.png"
+              alt="101 Night Market"
+              className="hero-logo relative z-10 w-40 sm:w-56 md:w-72 drop-shadow-[0_0_50px_rgba(255,30,30,0.65)]"
+              data-testid="img-nightmarket-logo-hero"
+              fetchPriority="high"
+            />
+          </div>
 
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium mb-7">
             <SiTiktok className="w-4 h-4 text-[#ff0050]" />

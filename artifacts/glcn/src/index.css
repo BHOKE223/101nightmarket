@@ -320,6 +320,68 @@
   }
 }
 
+/* ── Smoke effect around hero logo ──────────────────────────── */
+
+.smoke-ring {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.smoke-ring-1 {
+  width: 220px; height: 220px;
+  background: radial-gradient(circle, rgba(220,40,40,0.45) 0%, rgba(220,40,40,0) 70%);
+  filter: blur(18px);
+  animation: smokePulse 4s ease-in-out infinite;
+}
+.smoke-ring-2 {
+  width: 310px; height: 310px;
+  background: radial-gradient(circle, rgba(90,90,90,0.28) 0%, rgba(90,90,90,0) 70%);
+  filter: blur(26px);
+  animation: smokePulse 6.5s ease-in-out 1.2s infinite;
+}
+.smoke-ring-3 {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(180,35,35,0.18) 0%, rgba(180,35,35,0) 68%);
+  filter: blur(38px);
+  animation: smokePulse 9s ease-in-out 2.5s infinite;
+}
+
+.smoke-wisp {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(28px);
+}
+.smoke-wisp-1 {
+  width: 100px; height: 160px;
+  background: rgba(200,30,30,0.28);
+  top: -55px; left: 38%;
+  animation: smokeWisp 5.5s ease-in-out infinite;
+}
+.smoke-wisp-2 {
+  width: 90px; height: 140px;
+  background: rgba(70,70,70,0.22);
+  bottom: -45px; right: 35%;
+  animation: smokeWisp 7s ease-in-out 1.8s infinite reverse;
+}
+.smoke-wisp-3 {
+  width: 80px; height: 130px;
+  background: rgba(210,45,45,0.2);
+  top: 10%; right: 20%;
+  animation: smokeWisp 6s ease-in-out 0.9s infinite;
+}
+
+@keyframes smokePulse {
+  0%, 100% { opacity: 0.55; transform: scale(1);    }
+  50%       { opacity: 1;    transform: scale(1.18); }
+}
+@keyframes smokeWisp {
+  0%, 100% { transform: translateX(0px)   translateY(0px)   rotate(0deg);  opacity: 0.4; }
+  33%      { transform: translateX(-18px) translateY(-20px) rotate(6deg);  opacity: 0.75; }
+  66%      { transform: translateX(14px)  translateY(-32px) rotate(-4deg); opacity: 0.55; }
+}
+
 /* ── Hero video & logo animations ───────────────────────────── */
 
 @keyframes heroVideoFadeIn {
