@@ -60,54 +60,62 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="pt-28 pb-20 px-4 min-h-[90vh] flex flex-col justify-center relative overflow-hidden">
-        <div className="absolute top-1/4 left-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 right-0 w-64 h-64 bg-secondary/15 rounded-full blur-3xl pointer-events-none" />
+      {/* Hero Section — full-screen video background */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
+        {/* Background video — fades in slowly */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="hero-video absolute inset-0 w-full h-full object-cover"
+          data-testid="video-hero-bg"
+        >
+          <source src="/feature1.mp4" type="video/mp4" />
+        </video>
 
-        <div className="container mx-auto max-w-4xl text-center relative z-10 fade-in is-visible">
-          {/* GLCN Logo — main hero focus */}
-          <div className="flex justify-center mb-6">
-            <div className="relative w-64 sm:w-80 md:w-96 rounded-full overflow-hidden drop-shadow-[0_0_40px_rgba(255,80,80,0.4)]">
-              <img
-                src="/glcn-logo.webp"
-                alt="GLCN – Go Live Creator Network"
-                className="w-full h-auto block"
-                data-testid="img-glcn-logo-hero"
-                fetchPriority="high"
-              />
-              {/* soft edge fade overlay */}
-              <div className="absolute inset-0 rounded-full" style={{background: 'radial-gradient(circle, transparent 55%, rgba(9,9,18,0.6) 75%, rgb(9,9,18) 100%)'}} />
-            </div>
-          </div>
+        {/* Layered gradient overlay for readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/45 to-black/85 pointer-events-none" />
 
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border border-border text-sm font-medium mb-8">
+        {/* Content */}
+        <div className="relative z-10 flex flex-col items-center text-center px-5 pt-20 pb-16 w-full max-w-4xl mx-auto">
+
+          {/* 101 Night Market logo — entrance scale + continuous bounce */}
+          <img
+            src="/logonightmarket.png"
+            alt="101 Night Market"
+            className="hero-logo w-40 sm:w-56 md:w-72 mb-6 drop-shadow-[0_0_40px_rgba(255,30,30,0.5)]"
+            data-testid="img-nightmarket-logo-hero"
+            fetchPriority="high"
+          />
+
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium mb-7">
             <SiTiktok className="w-4 h-4 text-[#ff0050]" />
             <span>Official TikTok Live Agency</span>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 leading-[1.1]">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter mb-5 leading-[1.1] text-white">
             Go Live.<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
               Grow Your Brand.
             </span>
           </h1>
 
-          <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto font-medium">
+          <p className="text-lg sm:text-xl md:text-2xl text-white/75 mb-10 max-w-2xl font-medium">
             Join the creator network that turns ordinary people into streaming stars.
             We build audiences, monetize streams, and launch businesses.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-sm sm:max-w-none">
             <Button
               size="lg"
               onClick={handleApply}
-              className="w-full sm:w-auto text-lg h-14 px-8 rounded-full font-bold"
+              className="w-full sm:w-auto text-lg h-14 px-8 rounded-full font-bold shadow-lg shadow-primary/40"
               data-testid="button-apply-hero"
             >
               Apply to Join GLCN <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground font-mono">
+            <div className="flex items-center gap-3 text-sm text-white/60 font-mono">
               <span className="flex items-center gap-1">
                 <Star className="w-4 h-4 text-primary" fill="currentColor" /> 15.4k+ Followers
               </span>
