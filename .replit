@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -39,3 +39,6 @@ externalPort = 3000
 
 [userenv.shared]
 WHOP_PLAN_ID = "plan_4EsQToHGWlEqN"
+
+[nix]
+channel = "stable-25_05"
