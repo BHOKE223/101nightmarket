@@ -32,8 +32,9 @@ description: Key product decisions, timezone rules, calendar integration plan, a
 - Configure Whop revenue split via Whop dashboard/API during setup.
 - Test the full split-pay flow in staging to confirm both accounts receive their correct share.
 
-## SMS
-- Provider: Twilio for vendor notifications.
+## Notifications & Auth
+- **Email only** — no Twilio/SMS. All reminders, booking confirmations, OTP/magic-link auth, and system alerts go via email.
+- Twilio is explicitly out of scope (may be added later).
 
 ## Stack notes
 - Vendor portal is a separate artifact from the GLCN landing page.
