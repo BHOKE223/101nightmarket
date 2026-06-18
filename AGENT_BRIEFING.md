@@ -229,6 +229,117 @@ Start by reading the existing floor map component code to understand the current
 
 ---
 
+## CRITICAL: Concurrent booking race condition prevention
+
+**Problem:** Two vendors can click the same booth at the same millisecond, both see it as "open", both get sent to Whop checkout, both pay — resulting in a double booking.
+
+**Solution: Database-level reservation lock system**
+
+### How it works
+1. Vendor clicks a booth → server immediately inserts a **reservation** row in a `booth_reservations` table inside a transaction
+2. A **unique constraint on `(booth_number, market_date, location)`** means only ONE insert can win — the second one gets a conflict error at the DB level, not the app level
+3. Winning vendor gets redirected to Whop checkout; their reservation holds the booth for **15 minutes**
+4. On Whop `payment.completed` webhook → reservation converts to a confirmed booking, status = `"confirmed"`
+5. If vendor abandons checkout → a cleanup job or TTL check marks the reservation as expired after 15 minutes → booth returns to `"open"`
+
+### `booth_reservations` table schema
+```typescript
+import { pgTable, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
+
+export const boothReservationsTable = pgTable("booth_reservations", {
+  id: serial("id").primaryKey(),
+  boothNumber: text("booth_number").notNull(),
+  marketDate: text("market_date").notNull(),
+  marketLocation: text("market_location").notNull(),
+  checkoutId: text("checkout_id").notNull().unique(),
+  whopPaymentId: text("whop_payment_id"),
+  vendorEmail: text("vendor_email"),
+  status: text("status").notNull().default("pending"), // pending | confirmed | expired
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  // THIS is the race condition guard — DB enforces only one active reservation per booth per date
+  uniqueBoothDate: unique("unique_booth_date_location").on(
+    table.boothNumber,
+    table.marketDate,
+    table.marketLocation
+  ),
+}));
+```
+
+### Checkout route logic (enforce atomically)
+```typescript
+// POST /api/whop/checkout
+// body: { booth_number, market_date, market_location, plan_id }
+
+// 1. Check for existing non-expired reservation
+const existing = await db.select().from(boothReservationsTable)
+  .where(and(
+    eq(boothReservationsTable.boothNumber, booth_number),
+    eq(boothReservationsTable.marketDate, market_date),
+    eq(boothReservationsTable.marketLocation, market_location),
+    gt(boothReservationsTable.expiresAt, new Date()),
+    ne(boothReservationsTable.status, "expired")
+  )).limit(1);
+
+if (existing.length > 0) {
+  return res.status(409).json({ error: "This booth is currently being reserved by another vendor. Please try again in a few minutes or choose a different booth." });
+}
+
+// 2. Create Whop checkout
+const checkout = await whop.checkoutConfigurations.create(...);
+
+// 3. Insert reservation — unique constraint prevents race condition
+try {
+  await db.insert(boothReservationsTable).values({
+    boothNumber: booth_number,
+    marketDate: market_date,
+    marketLocation: market_location,
+    checkoutId: checkout.id,
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 min
+    status: "pending",
+  });
+} catch (err) {
+  // Unique constraint violation — another vendor just beat them to it
+  return res.status(409).json({ error: "This booth was just taken by another vendor. Please choose a different booth." });
+}
+
+return res.json({ checkout_id: checkout.id, purchase_url: checkout.purchase_url });
+```
+
+### Webhook confirms the reservation
+```typescript
+// In payment.completed handler:
+await db.update(boothReservationsTable)
+  .set({ status: "confirmed", whopPaymentId: payment.id })
+  .where(eq(boothReservationsTable.checkoutId, checkoutId));
+```
+
+### Expired reservation cleanup
+On every `GET /api/booths` (floor map load), run a quick cleanup first:
+```typescript
+await db.update(boothReservationsTable)
+  .set({ status: "expired" })
+  .where(and(
+    lt(boothReservationsTable.expiresAt, new Date()),
+    eq(boothReservationsTable.status, "pending")
+  ));
+```
+
+### Floor map booth status logic (priority order)
+1. If confirmed reservation exists for booth+date+location → `"taken"` (red, unclickable)
+2. If pending reservation exists AND not expired → `"pending"` (yellow, unclickable, show "Being reserved...")
+3. Otherwise → `"open"` (green, clickable)
+
+### Frontend: optimistic UI on click
+When a vendor clicks a booth:
+- Immediately show a loading spinner on that booth
+- Disable the booth button to prevent double-clicks from the same browser
+- If the API returns 409 → show a clear message: "This booth was just taken. Please choose another."
+- If success → redirect to Whop checkout URL
+
+---
+
 ## Pricing summary (for reference)
 | Location | Type | Price |
 |----------|------|-------|
