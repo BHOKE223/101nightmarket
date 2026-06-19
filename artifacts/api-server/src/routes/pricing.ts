@@ -15,13 +15,28 @@ const whopFetch = (path: string, opts: RequestInit = {}) =>
     },
   });
 
-// ─── GET /api/admin/pricing ────────────────────────────────────────────────
+async function createWhopPlan(priceInDollars: number, name: string): Promise<string> {
+  const planRes = await whopFetch("/plans", {
+    method: "POST",
+    body: JSON.stringify({
+      company_id: process.env.WHOP_COMPANY_ID,
+      product_id: "prod_DfqWDt9Ip5GMq",
+      plan_type: "one_time",
+      release_method: "buy_now",
+      initial_price: priceInDollars,
+      visibility: "hidden",
+      name,
+    }),
+  });
+  const planData: any = await planRes.json().catch(() => ({}));
+  if (!planRes.ok) throw new Error(planData?.error?.message ?? "Failed to create Whop plan");
+  return planData.id;
+}
+
+// GET /api/admin/pricing
 router.get("/admin/pricing", async (req: Request, res: Response) => {
   try {
-    const pricing = await db
-      .select()
-      .from(boothPricingTable)
-      .orderBy(boothPricingTable.location, boothPricingTable.boothType);
+    const pricing = await db.select().from(boothPricingTable).orderBy(boothPricingTable.id);
     res.json({ pricing });
   } catch (err: unknown) {
     req.log.error({ err }, "pricing list error");
@@ -29,64 +44,70 @@ router.get("/admin/pricing", async (req: Request, res: Response) => {
   }
 });
 
-// ─── PATCH /api/admin/pricing/:id ─────────────────────────────────────────
-// Body: { price: number }
-// Creates a new Whop plan at the new price, updates the DB record
+// GET /api/pricing/public — for the booking form
+router.get("/pricing/public", async (req: Request, res: Response) => {
+  try {
+    const pricing = await db.select().from(boothPricingTable)
+      .where(eq(boothPricingTable.active, true))
+      .orderBy(boothPricingTable.id);
+    res.json({ pricing });
+  } catch (err: unknown) {
+    req.log.error({ err }, "public pricing error");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// PATCH /api/admin/pricing/:id
+// Body: { price_per_day?: number (dollars), price_four_day?: number (dollars) }
 router.patch("/admin/pricing/:id", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const newPrice = Number(req.body?.price);
+    const { price_per_day, price_four_day } = req.body ?? {};
 
-    if (!id || isNaN(newPrice) || newPrice < 1) {
-      res.status(400).json({ error: "Valid id and price are required" });
+    if (!id) {
+      res.status(400).json({ error: "Valid id required" });
       return;
     }
 
-    const [existing] = await db
-      .select()
-      .from(boothPricingTable)
-      .where(eq(boothPricingTable.id, id));
-
+    const [existing] = await db.select().from(boothPricingTable).where(eq(boothPricingTable.id, id));
     if (!existing) {
       res.status(404).json({ error: "Booth pricing record not found" });
       return;
     }
 
-    if (existing.price === newPrice) {
-      res.json({ message: "Price unchanged", whopPlanId: existing.whopPlanId });
-      return;
+    const updates: Record<string, any> = { updatedAt: new Date() };
+
+    if (price_per_day !== undefined) {
+      const newCents = Math.round(Number(price_per_day) * 100);
+      if (isNaN(newCents) || newCents < 100) {
+        res.status(400).json({ error: "price_per_day must be at least $1" });
+        return;
+      }
+      if (newCents !== existing.pricePerDay) {
+        const planId = await createWhopPlan(price_per_day, `${existing.label} — Single Day`);
+        updates.pricePerDay = newCents;
+        updates.whopPlanIdDaily = planId;
+      }
     }
 
-    // Create a new Whop plan at the new price
-    const planRes = await whopFetch("/plans", {
-      method: "POST",
-      body: JSON.stringify({
-        company_id: process.env.WHOP_COMPANY_ID,
-        product_id: "prod_DfqWDt9Ip5GMq",
-        plan_type: "one_time",
-        release_method: "buy_now",
-        initial_price: newPrice,
-        visibility: "hidden",
-      }),
-    });
-
-    const planData: any = await planRes.json().catch(() => ({}));
-    if (!planRes.ok) {
-      res.status(planRes.status).json({
-        error: planData?.error?.message ?? "Failed to create Whop plan",
-      });
-      return;
+    if (price_four_day !== undefined) {
+      const newCents = Math.round(Number(price_four_day) * 100);
+      if (isNaN(newCents) || newCents < 100) {
+        res.status(400).json({ error: "price_four_day must be at least $1" });
+        return;
+      }
+      if (newCents !== existing.priceFourDay) {
+        const planId = await createWhopPlan(price_four_day, `${existing.label} — 4-Day Bundle`);
+        updates.priceFourDay = newCents;
+        updates.whopPlanIdFourDay = planId;
+      }
     }
 
-    const newPlanId: string = planData.id;
+    await db.update(boothPricingTable).set(updates).where(eq(boothPricingTable.id, id));
+    const [updated] = await db.select().from(boothPricingTable).where(eq(boothPricingTable.id, id));
 
-    await db
-      .update(boothPricingTable)
-      .set({ price: newPrice, whopPlanId: newPlanId, updatedAt: new Date() })
-      .where(eq(boothPricingTable.id, id));
-
-    req.log.info({ id, oldPrice: existing.price, newPrice, newPlanId }, "booth price updated");
-    res.json({ success: true, price: newPrice, whopPlanId: newPlanId });
+    req.log.info({ id, updates }, "booth pricing updated");
+    res.json({ success: true, pricing: updated });
   } catch (err: unknown) {
     req.log.error({ err }, "pricing update error");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });

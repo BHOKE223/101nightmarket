@@ -4,11 +4,13 @@ import { z } from "zod/v4";
 
 export const boothPricingTable = pgTable("booth_pricing", {
   id: serial("id").primaryKey(),
-  location: text("location").notNull(),
-  boothType: text("booth_type").notNull(),
+  boothType: text("booth_type").notNull().unique(),
   label: text("label").notNull(),
-  price: integer("price").notNull(),
-  whopPlanId: text("whop_plan_id").notNull(),
+  size: text("size").notNull(),
+  pricePerDay: integer("price_per_day").notNull(),
+  priceFourDay: integer("price_four_day"),
+  whopPlanIdDaily: text("whop_plan_id_daily"),
+  whopPlanIdFourDay: text("whop_plan_id_four_day"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
